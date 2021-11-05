@@ -1,17 +1,16 @@
 package com.example.testapp;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.recyclerview.widget.RecyclerView;
-
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ClipData;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.AssetFileDescriptor;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.media.ExifInterface;
@@ -21,10 +20,17 @@ import android.os.Environment;
 import android.os.StrictMode;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.example.testapp.utils.CategoryFolder;
 import com.example.testapp.utils.PicHolder;
@@ -39,16 +45,20 @@ import com.google.firebase.ml.vision.face.FirebaseVisionFaceDetectorOptions;
 import com.gun0912.tedpermission.PermissionListener;
 import com.gun0912.tedpermission.TedPermission;
 
+import org.tensorflow.lite.Interpreter;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity implements itemClickListener {
+public class MainActivity extends AppCompatActivity implements itemClickListener{
     private Boolean isPermission = true;
     private static final int PICK_FROM_ALBUM = 1;
     private String photoDate;
@@ -64,16 +74,40 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
         StrictMode.setVmPolicy(builder.build());
         tedPermission();
 
-        findViewById(R.id.btnGallery).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
 
-                // 권한 허용에 동의하지 않았을 경우 토스트를 띄웁니다.
-                if (isPermission) goToAlbum();
-                else
-                    Toast.makeText(view.getContext(), getResources().getString(R.string.permission_2), Toast.LENGTH_LONG).show();
+        SwipeRefreshLayout mSwipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipeRefresh);
+        mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh() {
+                Intent intent = getIntent();
+                finish();
+                startActivity(intent);
+                overridePendingTransition(R.anim.fadein, R.anim.fadeout);
+
+                mSwipeRefreshLayout.setRefreshing(false);
             }
         });
+        mSwipeRefreshLayout.setColorSchemeResources(
+                android.R.color.holo_green_light
+        );
+
+
+        //toolbar 관련
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+//        findViewById(R.id.btnGallery).setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//
+//                // 권한 허용에 동의하지 않았을 경우 토스트를 띄웁니다.
+//                if (isPermission) goToAlbum();
+//                else
+//                    Toast.makeText(view.getContext(), getResources().getString(R.string.permission_2), Toast.LENGTH_LONG).show();
+//            }
+//        });
 
         // Map 버튼 눌렀을 때
         Button mapButton = (Button) findViewById(R.id.btnMap);
@@ -86,133 +120,52 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
         });
 
 
-        //리무브 버튼 눌렀을 때
-        Button editButton = (Button) findViewById(R.id.btnRemove);
-        editButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        //메인 화면에 지역명폴더 띄우기
+        getPicturePath();
 
-                AlertDialog.Builder dlg = new AlertDialog.Builder(MainActivity.this);
-                dlg.setTitle("삭제할 지역 폴더를 선택하세요.");
+    }
 
-                File[] storageDir = {new File(Environment.getExternalStorageDirectory() + "/addPhoto/")};
-                if (!storageDir[0].exists()) storageDir[0].mkdirs();
-                File[] locationFoldersNames = storageDir[0].listFiles();
+    //옵션 메뉴 등록
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu){
+        getMenuInflater().inflate(R.menu.toolbar_menu, menu);
+        return true;
+    }
 
+    //옵션 메뉴 클릭 이벤트
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch (item.getItemId()){
 
-                final int[] number = {locationFoldersNames.length};
-
-
-                String[] localArray = new String[number[0]];
-
-                for(int i = 0; i < number[0]; i++){
-                    localArray[i]= locationFoldersNames[i].getName();
-                }
-
-
-                String[] selectedItem= {localArray[0]};
+            //상단 - 사진추가
+            case R.id.btnGallery:
+                if(isPermission) goToAlbum();
+                else
+                    Toast.makeText(getApplicationContext(), getResources().getString(R.string.permission_2), Toast.LENGTH_LONG).show();
+                return true;
 
 
-                dlg.setSingleChoiceItems(localArray, 0, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        selectedItem[0] = localArray[which];
-                    }
-                });
-
-
-                dlg.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-
-                        AlertDialog.Builder dlgSecond = new AlertDialog.Builder(MainActivity.this);
-                        dlgSecond.setTitle("삭제할 폴더를 선택하세요.");
-
-                        String[] humanLabel = new String[]{"인물", "그 외 폴더", "전부삭제"};
-                        String[] selectedItemsSecond = {"인물"};
-
-                        dlgSecond.setSingleChoiceItems(humanLabel, 0, new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                selectedItemsSecond[0] = humanLabel[which];
-
-                            }
-
-                        });
-
-                        dlgSecond.setPositiveButton("확인", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                File[] checkDir = {new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem[0] +"/"+ selectedItemsSecond[0])};
-
-
-
-                                if(selectedItemsSecond[0].equals("전부삭제")){
-                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem[0]);
-                                    DeleteDir(dir.getPath());
-                                    Toast.makeText(MainActivity.this, "지역폴더 삭제 완료",Toast.LENGTH_SHORT).show();
-
-                                }
-                                else if(selectedItemsSecond[0].equals("그 외 폴더") && checkDir[0].exists()){
-                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem[0]  +"/그 외 폴더");
-                                    DeleteDir(dir.getPath());
-                                    Toast.makeText(MainActivity.this, selectedItem[0] + "의 " + selectedItemsSecond[0] +" 삭제 완료",Toast.LENGTH_SHORT).show();
-
-                                }
-                                else if(selectedItemsSecond[0].equals("인물") && checkDir[0].exists()){
-                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem[0]  +"/인물");
-                                    DeleteDir(dir.getPath());
-                                    Toast.makeText(MainActivity.this, selectedItem[0] + "의 " + selectedItemsSecond[0] +" 폴더 삭제 완료",Toast.LENGTH_SHORT).show();
-
-                                }
-                                else{
-                                    Toast.makeText(MainActivity.this, "잘못된 접근입니다.",Toast.LENGTH_SHORT).show();
-
-                                }
-
-
-
-                            }
-                        });
-
-                        dlgSecond.show();
-                    }
-                });
-                dlg.show();
-
-            }
-
-
-        });
-
-
-        //수정 버튼 눌렀을 때
-        Button renameButton = (Button) findViewById(R.id.btnRename);
-        renameButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-
+            //상단 - 옵션메뉴 중 폴더 수정
+            case R.id.btnRename:
                 AlertDialog.Builder dlg = new AlertDialog.Builder(MainActivity.this);
                 dlg.setTitle("수정할 지역 폴더를 선택하세요.");
 
                 File[] storageDir = {new File(Environment.getExternalStorageDirectory() + "/addPhoto/")};
-                if (!storageDir[0].exists()) storageDir[0].mkdirs();
+                if(!storageDir[0].exists()) storageDir[0].mkdirs();
                 File[] locationFoldersNames = storageDir[0].listFiles();
 
                 final String[] rename = {null};
 
                 final int[] number = {locationFoldersNames.length};
 
-
                 String[] localArray = new String[number[0]];
 
                 for(int i = 0; i < number[0]; i++){
-                    localArray[i]= locationFoldersNames[i].getName();
+                    localArray[i] = locationFoldersNames[i].getName();
                 }
 
-
-                String[] selectedItem= {localArray[0]};
-
+                //에러에러
+                String[] selectedItem = {localArray[0]};
 
                 dlg.setSingleChoiceItems(localArray, 0, new DialogInterface.OnClickListener() {
                     @Override
@@ -224,17 +177,16 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
                 dlg.setPositiveButton("확인", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        final EditText editText = new EditText(view.getContext());
-                        AlertDialog.Builder renameDLG = new AlertDialog.Builder(view.getContext());
+                        final EditText editText = new EditText(MainActivity.this);
+                        AlertDialog.Builder renameDLG = new AlertDialog.Builder(MainActivity.this);
                         renameDLG.setTitle("수정할 이름을 입력하세요.");
                         renameDLG.setView(editText);
-                        renameDLG.setPositiveButton("입력",
-                                new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
+                        renameDLG.setPositiveButton("입력", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
 
-                                    }
-                                });
+                            }
+                        });
 
                         renameDLG.setPositiveButton("확인", new DialogInterface.OnClickListener() {
                             @Override
@@ -242,28 +194,105 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
                                 rename[0] = editText.getText().toString();
 
                                 File newFolderDir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + rename[0]);
-                                if (!newFolderDir.exists()) newFolderDir.mkdir();
+                                if(!newFolderDir.exists()) newFolderDir.mkdir();
                                 File chooseFolder = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem[0]);
 
                                 boolean success = chooseFolder.renameTo(newFolderDir);
-
-
                             }
                         });
-
                         renameDLG.show();
                     }
                 });
 
                 dlg.show();
-            }
-        });
+                return true;
 
-        //메인 화면에 지역명폴더 띄우기
-        getPicturePath();
+
+            //상단 - 옵션메뉴 중 폴더 삭제
+            case R.id.btnRemove:
+                AlertDialog.Builder dlg_ = new AlertDialog.Builder(MainActivity.this);
+                dlg_.setTitle("삭제할 지역 폴더를 선택하세요.");
+
+                File[] storageDir_ = {new File(Environment.getExternalStorageDirectory() + "/addPhoto/")};
+                if (!storageDir_[0].exists()) storageDir_[0].mkdirs();
+                File[] locationFoldersNamess = storageDir_[0].listFiles();
+
+                final int[] numbers = {locationFoldersNamess.length};
+
+                String[] localArrays = new String[numbers[0]];
+
+                for(int i = 0; i < numbers[0]; i++){
+                    localArrays[i]= locationFoldersNamess[i].getName();
+                }
+
+                //에러에러
+                String[] selectedItem_ = {localArrays[0]};
+
+                dlg_.setSingleChoiceItems(localArrays, 0, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        selectedItem_[0] = localArrays[which];
+                    }
+                });
+
+                dlg_.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        AlertDialog.Builder dlgSecond = new AlertDialog.Builder(MainActivity.this);
+                        dlgSecond.setTitle("삭제할 폴더를 선택하세요.");
+
+                        String[] humanLabel = new String[]{"인물", "음식","풍경" ,"전부삭제"};
+                        String[] selectedItemsSecond = {"인물"};
+
+                        dlgSecond.setSingleChoiceItems(humanLabel, 0, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                selectedItemsSecond[0] = humanLabel[which];
+                            }
+                        });
+
+                        dlgSecond.setPositiveButton("확인", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                File[] checkDir = {new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem_[0]+"/"+ selectedItemsSecond[0])};
+
+                                if(selectedItemsSecond[0].equals("전부삭제")){
+                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem_[0]);
+                                    DeleteDir(dir.getPath());
+                                    Toast.makeText(MainActivity.this, "지역폴더 삭제 완료", Toast.LENGTH_SHORT).show();
+                                }
+                                else if(selectedItemsSecond[0].equals("음식")&& checkDir[0].exists()){
+                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem_[0] + "/음식");
+                                    DeleteDir(dir.getPath());
+                                    Toast.makeText(MainActivity.this, selectedItem_[0] + "의 " + selectedItemsSecond[0] + "삭제 완료", Toast.LENGTH_SHORT).show();
+                                }
+                                else if(selectedItemsSecond[0].equals("인물")&& checkDir[0].exists()){
+                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem_[0] + "/인물");
+                                    DeleteDir(dir.getPath());
+                                    Toast.makeText(MainActivity.this, selectedItem_[0] + "의 " + selectedItemsSecond[0] + "폴더 삭제 완료", Toast.LENGTH_SHORT).show();
+                                }
+                                else if(selectedItemsSecond[0].equals("풍경")&& checkDir[0].exists()){
+                                    File dir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + selectedItem_[0] + "/풍경");
+                                    DeleteDir(dir.getPath());
+                                    Toast.makeText(MainActivity.this, selectedItem_[0] + "의 " + selectedItemsSecond[0] + "폴더 삭제 완료", Toast.LENGTH_SHORT).show();
+                                }
+                                else {
+                                    Toast.makeText(MainActivity.this, "잘못된 접근입니다.", Toast.LENGTH_SHORT).show();
+                                }
+                            }
+                        });
+                        dlgSecond.show();
+                    }
+                });
+                dlg_.show();
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+        }
 
     }
-    
+
     private void DeleteDir(String path) {
         File file = new File(path);
         File[] childFileList = file.listFiles();
@@ -307,12 +336,10 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
         RecyclerView.Adapter folderAdapter = new folderAdapter(folds,MainActivity.this,this);
         folderRecycler.setAdapter(folderAdapter);
 
-
     }
 
     @Override
     public void onPicClicked(PicHolder holder, int position, ArrayList<pictureFacer> pics) {
-
     }
 
     @Override
@@ -349,11 +376,10 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
                     for (int i = 0; i < clipData.getItemCount(); i++) {
                         imagePath = getRealPathFromURI(clipData.getItemAt(i).getUri());
 
-                        if(imagePath == null){
+                        if (imagePath == null) {
                             Toast.makeText(this, "잘못된 접근입니다.", Toast.LENGTH_LONG).show();
                             return;
-                        }
-                        else{
+                        } else {
                             File photoFile = new File(imagePath);
                             Bitmap bitmap = BitmapFactory.decodeFile(imagePath);
                             FirebaseVisionImage image = FirebaseVisionImage.fromBitmap(bitmap);
@@ -368,7 +394,8 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
                                 e.printStackTrace();
                             }
 
-                            initDetector(image, photoFile, photoLocation); //위치 + 인물 구별해서 폴더에 저장
+                            initDetector(bitmap, image, photoFile, photoLocation); //위치 + 인물 구별해서 폴더에 저장
+
                         }
                     }
 
@@ -378,7 +405,7 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
     }
 
 
-    private void initDetector(FirebaseVisionImage image, File photoFile, String photoLocation) {
+    private void initDetector(Bitmap bitmap, FirebaseVisionImage image, File photoFile, String photoLocation) {
         //얼굴인식 옵션. 정확성 높이는 옵션 추가.
         FirebaseVisionFaceDetectorOptions detectorOptions = new FirebaseVisionFaceDetectorOptions
                 .Builder()
@@ -403,16 +430,49 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
                             e.printStackTrace();
                         }
 
-                    } else {
+                    } else { //인물 사진이 아닐 경우
                         System.out.println("인물 x!");
-                        File storageDir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + photoLocation + "/" + "그 외 폴더/");
-                        if (!storageDir.exists()) storageDir.mkdirs(); // 폴더가 존재하지 않는다면 생성
-                        File savedImageFile = new File(storageDir, photoFile.getName());
+                        Bitmap.createScaledBitmap(bitmap, 20, 20, true);
 
-                        try {
-                            copy(photoFile, savedImageFile);
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        int batchNum = 0;
+                        float[][][][] input = new float[1][20][20][3];
+                        for (int x = 0; x < 20; x++) {
+                            for (int y = 0; y < 20; y++) {
+                                int pixel = bitmap.getPixel(x, y);
+
+                                input[batchNum][x][y][0] = (Color.red(pixel) - 127) / 128.0f;
+                                input[batchNum][x][y][1] = (Color.green(pixel) - 127) / 128.0f;
+                                input[batchNum][x][y][2] = (Color.blue(pixel) - 127) / 128.0f;
+                            }
+                        }
+
+                        Interpreter tf_lite = getTfliteInterpreter("food_model.tflite");
+                        float[][] output = new float[1][1];
+                        tf_lite.run(input, output);
+
+                        System.out.println(output[0][0]);
+                        if (Math.round(output[0][0]) == 1) {
+                            File storageFoodDir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + photoLocation + "/" + "음식/");
+                            if (!storageFoodDir.exists())
+                                storageFoodDir.mkdirs(); // 폴더가 존재하지 않는다면 생성
+                            File savedFoodImageFile = new File(storageFoodDir, photoFile.getName());
+
+                            try {
+                                copy(photoFile, savedFoodImageFile);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
+                        } else {
+                            File storageBackDir = new File(Environment.getExternalStorageDirectory() + "/addPhoto/" + photoLocation + "/" + "풍경/");
+                            if (!storageBackDir.exists())
+                                storageBackDir.mkdirs(); // 폴더가 존재하지 않는다면 생성
+                            File savedBackImageFile = new File(storageBackDir, photoFile.getName());
+
+                            try {
+                                copy(photoFile, savedBackImageFile);
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
 
                     }
@@ -486,6 +546,10 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
             }
 
             @Override
+            public void onPermissionDenied(List<String> deniedPermissions) {
+
+            }
+
             public void onPermissionDenied(ArrayList<String> deniedPermissions) {
                 // 권한 요청 실패
                 isPermission = false;
@@ -592,5 +656,23 @@ public class MainActivity extends AppCompatActivity implements itemClickListener
         photoDate = getTagString(ExifInterface.TAG_DATETIME, exif);
         Log.d("photoDate", photoDate);
     }
+    private MappedByteBuffer loadModelFile(Activity activity, String modelPath) throws IOException {
+        AssetFileDescriptor fileDescriptor = activity.getAssets().openFd(modelPath);
+        FileInputStream inputStream = new FileInputStream(fileDescriptor.getFileDescriptor());
+        FileChannel fileChannel = inputStream.getChannel();
+        long startOffset = fileDescriptor.getStartOffset();
+        long declaredLength = fileDescriptor.getDeclaredLength();
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength);
+    }
+
+    private Interpreter getTfliteInterpreter(String modelPath) {
+        try {
+            return new Interpreter(loadModelFile(MainActivity.this, modelPath));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 
 }
+

@@ -7,11 +7,11 @@ import android.os.Environment;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.testapp.MainActivity;
 import com.example.testapp.R;
 
 import java.io.File;
 import java.util.ArrayList;
+
 
 public class CategoryFolder extends AppCompatActivity implements itemClickListener {
     RecyclerView categoryFolderRecycler;
@@ -59,7 +59,6 @@ public class CategoryFolder extends AppCompatActivity implements itemClickListen
         RecyclerView.Adapter categoryFolderAdapter = new CategoryFolderAdapter(folds, CategoryFolder.this, this);
         categoryFolderRecycler.setAdapter(categoryFolderAdapter);
     }
-
     @Override
     public void onPicClicked(PicHolder holder, int position, ArrayList<pictureFacer> pics) {
 
@@ -74,3 +73,4 @@ public class CategoryFolder extends AppCompatActivity implements itemClickListen
         startActivity(move);
     }
 }
+

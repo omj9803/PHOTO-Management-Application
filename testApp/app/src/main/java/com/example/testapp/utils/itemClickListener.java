@@ -1,6 +1,5 @@
 package com.example.testapp.utils;
 
-import java.io.File;
 import java.util.ArrayList;
 
 public interface itemClickListener {

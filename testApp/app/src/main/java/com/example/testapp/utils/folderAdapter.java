@@ -10,9 +10,6 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
 import androidx.recyclerview.widget.RecyclerView;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.request.RequestOptions;
-
 
 import com.example.testapp.R;
 
@@ -26,7 +23,6 @@ public class folderAdapter extends RecyclerView.Adapter<folderAdapter.FolderHold
     private itemClickListener listenToClick;
 
     public folderAdapter(){
-
     }
 
     public folderAdapter(ArrayList<imageFolder> folders, Context folderContx, itemClickListener listen) {

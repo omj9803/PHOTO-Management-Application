@@ -6,52 +6,83 @@
     android:orientation="vertical"
     tools:context=".MapWithPhoto">
 
+    <com.google.android.material.appbar.MaterialToolbar
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:background="@color/background"
+        android:id="@+id/toolbar_map">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="MAP"
+            android:layout_gravity="center"/>
+
+    </com.google.android.material.appbar.MaterialToolbar>
+
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:background="@color/white"
+        android:layout_marginTop="5dp">
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="setRed"
-            android:text="Red" />
+            android:textColor="@color/primary"
+            android:text="Red"
+            android:background="@drawable/button_pressed"
+            android:theme="@style/AppTheme.Btn"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="setBlue"
-            android:text="Blue" />
+            android:textColor="@color/primary"
+            android:text="Blue"
+            android:background="@drawable/button_pressed"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="setYellow"
-            android:text="Yellow" />
+            android:textColor="@color/primary"
+            android:text="Yellow"
+            android:background="@drawable/button_pressed"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="setGreen"
-            android:text="Green" />
+            android:textColor="@color/primary"
+            android:text="Green"
+            android:background="@drawable/button_pressed"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="setBlack"
-            android:text="Black" />
+            android:textColor="@color/primary"
+            android:text="Black"
+            android:background="@drawable/button_pressed"/>
 
         <Button
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:onClick="clearPaint"
-            android:text="Back" />
+            android:textColor="@color/white"
+            android:text="Back"
+            android:background="@drawable/button_shape_back"/>
 <!--        <Button-->
 <!--            android:layout_width="wrap_content"-->
 <!--            android:layout_height="wrap_content"-->

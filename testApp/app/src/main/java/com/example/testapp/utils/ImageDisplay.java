@@ -1,21 +1,11 @@
 package com.example.testapp.utils;
 
 import android.content.Intent;
-import android.database.Cursor;
-import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
-import android.provider.MediaStore;
-import android.view.View;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.testapp.MainActivity;
 import com.example.testapp.R;
 import com.example.testapp.fragment.pictureBrowserFragment;
 
@@ -89,3 +79,4 @@ public class ImageDisplay extends AppCompatActivity implements itemClickListener
         imageRecycler.setAdapter(new pictureAdapter(images,ImageDisplay.this,this));
     }
 }
+

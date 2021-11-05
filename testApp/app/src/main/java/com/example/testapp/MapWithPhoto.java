@@ -1,10 +1,12 @@
 package com.example.testapp;
 
-import androidx.appcompat.app.AppCompatActivity;
-
-import android.graphics.Bitmap;
+import android.content.Intent;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 
 public class MapWithPhoto extends AppCompatActivity {
 
@@ -12,6 +14,11 @@ public class MapWithPhoto extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map_with_photo);
+
+        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar_map);
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
     }
 
     public void increaseValue(View v) {
@@ -61,5 +68,24 @@ public class MapWithPhoto extends AppCompatActivity {
 //        MyView.loadPaint();
     }
 
+    //map intent toolbar 뒤로가기 기능 추가
+    public boolean onOptionsItemSelected(MenuItem item){
+        switch(item.getItemId()){
+            case android.R.id.home:{
+                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                startActivity(intent);
+
+                return true;
+            }
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    public void onBackPressed(){
+        super.onBackPressed();
+        //stopPlay();
+
+    }
 
 }
+
